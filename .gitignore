@@ -1,0 +1,12 @@
+#variabvles de entorno tiene la key
+.env
+
+#base de datos local
+db.sqlite3
+
+#configara el editor
+.vscode
+
+#rchivos compilados de pytrhton
+__pycache__/
+*.pyc
