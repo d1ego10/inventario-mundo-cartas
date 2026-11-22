@@ -17,9 +17,26 @@
             <a class="navbar-brand" href="{% url 'inventario:inicio' %}">
                 Mundo Cartas
             </a>
+
+            {% if user.is_authenticated %}
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-white">
+                        {{ user.username }}
+                    </span>
+
+                    <form method="post"
+                        action="{% url 'usuarios:logout' %}"
+                        class="mb-0">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="btn btn-outline-light btn-sm">
+                            Cerrar sesión
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
         </div>
     </nav>
-
     <main class="container py-4">
         {% block content %}{% endblock %}
     </main>
