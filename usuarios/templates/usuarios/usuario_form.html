@@ -1,0 +1,24 @@
+{% extends "inventario/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Nuevo usuario{% endblock %}
+
+{% block content %}
+<div class="col-md-6 mx-auto">
+    <h1 class="h3 mb-3">Nuevo usuario</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+
+        <button type="submit" class="btn btn-primary">
+            Crear usuario
+        </button>
+
+        <a href="{% url 'usuarios:listar' %}"
+           class="btn btn-secondary">
+            Cancelar
+        </a>
+    </form>
+</div>
+{% endblock %}
