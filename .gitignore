@@ -10,3 +10,7 @@ db.sqlite3
 #rchivos compilados de pytrhton
 __pycache__/
 *.pyc
+
+
+# Imagenes subidas de productos
+/productos/

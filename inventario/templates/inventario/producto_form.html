@@ -1,17 +1,22 @@
 {% extends "inventario/base.html" %}
 
-{% block title %}Nuevo producto{% endblock %}
+{% block title %}Producto{% endblock %}
 
 {% block content %}
 <div class="col-md-6 mx-auto">
-    <h2 class="mb-3">Nuevo producto</h2>
+
+    {% if editando %}
+        <h2 class="mb-3">Editar producto</h2>
+    {% else %}
+        <h2 class="mb-3">Nuevo producto</h2>
+    {% endif %}
 
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.as_p }}
 
         <button type="submit" class="btn btn-primary">
-            Guardar producto
+            Guardar
         </button>
 
         <a href="{% url 'inventario:productos' %}"
@@ -19,5 +24,6 @@
             Cancelar
         </a>
     </form>
+
 </div>
 {% endblock %}

@@ -1,4 +1,3 @@
-
 from django import forms
 from .models import Categoria
 from .models import Producto
@@ -42,3 +41,17 @@ class ProductoForm(forms.ModelForm):
             "stock_minimo": "Stock mínimo",
             "imagen": "Imagen (opcional)",
         }
+#para nuev form
+class ProductoEditarForm(forms.ModelForm):
+    class Meta:
+        model = Producto
+        fields = [
+            "nombre",
+            "variante",
+            "sku",
+            "categoria",
+            "unidad_venta",
+            "precio",
+            "stock_minimo",
+            "imagen",
+        ]

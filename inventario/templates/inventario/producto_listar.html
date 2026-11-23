@@ -20,9 +20,8 @@
                class="form-control"
                placeholder="Buscar por nombre o SKU"
                value="{{ buscar }}">
-        <button class="btn btn-secondary">
-            Buscar
-        </button>
+
+        <button class="btn btn-secondary">Buscar</button>
     </div>
 </form>
 
@@ -35,8 +34,13 @@
             <th>Precio</th>
             <th>Stock</th>
             <th>Estado</th>
+
+            {% if es_admin %}
+                <th>Acciones</th>
+            {% endif %}
         </tr>
     </thead>
+
     <tbody>
         {% for producto in productos %}
         <tr>
@@ -45,8 +49,11 @@
             <td>{{ producto.categoria.nombre }}</td>
             <td>${{ producto.precio }}</td>
             <td>{{ producto.stock_actual }}</td>
+
             <td>
-                {% if producto.stock_actual == 0 %}
+                {% if not producto.activo %}
+                    <span class="badge bg-secondary">Inactivo</span>
+                {% elif producto.stock_actual == 0 %}
                     <span class="badge bg-danger">Agotado</span>
                 {% elif producto.stock_actual <= producto.stock_minimo %}
                     <span class="badge bg-warning text-dark">Stock bajo</span>
@@ -54,10 +61,36 @@
                     <span class="badge bg-success">Disponible</span>
                 {% endif %}
             </td>
+
+            {% if es_admin %}
+            <td>
+                {% if producto.activo %}
+                <a href="{% url 'inventario:producto_editar' producto.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    Editar
+                </a>
+
+                <form method="post"
+                      action="{% url 'inventario:producto_desactivar' producto.id %}"
+                      class="d-inline">
+                    {% csrf_token %}
+
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('¿Desactivar este producto?')">
+                        Desactivar
+                    </button>
+                </form>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            {% endif %}
+
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">No hay productos registrados.</td>
+            <td colspan="7">No hay productos registrados.</td>
         </tr>
         {% endfor %}
     </tbody>

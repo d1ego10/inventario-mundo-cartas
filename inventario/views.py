@@ -9,6 +9,8 @@ from django.db.models import Q
 from .models import Producto, MovimientoInventario
 from .forms import ProductoForm
 from django.db import transaction
+from django.views.decorators.http import require_POST
+from .forms import ProductoEditarForm
 # Create your views here.
 
 @login_required
@@ -75,10 +77,16 @@ def editar_categoria(request, pk):
 
 @login_required
 def listar_productos(request):
-    productos = Producto.objects.filter(
-        activo=True
-    ).select_related("categoria")
+    es_admin = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador"
+    ).exists()
 
+    productos = Producto.objects.select_related("categoria")
+
+    if not es_admin:
+        productos = productos.filter(activo=True)
+        
     buscar = request.GET.get("buscar", "")
 
     if buscar:
@@ -86,13 +94,8 @@ def listar_productos(request):
             Q(nombre__icontains=buscar) |
             Q(sku__icontains=buscar)
         )
-
+        
     productos = productos.order_by("nombre")
-
-    es_admin = Perfil.objects.filter(
-        user=request.user,
-        rol__nombre="Administrador"
-    ).exists()
 
     return render(request, "inventario/producto_listar.html", {
         "productos": productos,
@@ -132,3 +135,38 @@ def crear_producto(request):
     return render(request, "inventario/producto_form.html", {
         "form": form
     })
+    
+    
+
+@login_required
+def editar_producto(request, pk):
+    verificar_admin(request)
+
+    producto = get_object_or_404(Producto, pk=pk, activo=True)
+
+    form = ProductoEditarForm(
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
+        instance=producto
+    )
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return redirect("inventario:productos")
+
+    return render(request, "inventario/producto_form.html", {
+        "form": form,
+        "editando": True,
+    })
+
+
+@login_required
+@require_POST
+def desactivar_producto(request, pk):
+    verificar_admin(request)
+
+    producto = get_object_or_404(Producto, pk=pk, activo=True)
+    producto.activo = False
+    producto.save()
+
+    return redirect("inventario:productos")
