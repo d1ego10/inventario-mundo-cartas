@@ -29,10 +29,18 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, 
 
 @login_required
 def inicio(request):
-    return render(request, "inventario/inicio.html")
+    es_admin = request.user.is_superuser or Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador"
+    ).exists()
+
+    if es_admin:
+        return reportes(request)
+
+    return redirect("ventas:nueva")
 
 def verificar_admin(request):
-    es_admin = Perfil.objects.filter(
+    es_admin = request.user.is_superuser or Perfil.objects.filter(
         user=request.user,
         rol__nombre="Administrador"
     ).exists()
