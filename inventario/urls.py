@@ -14,4 +14,5 @@ urlpatterns = [
     path("productos/desactivar/<int:pk>/", views.desactivar_producto, name="producto_desactivar"),
     path("mercaderia/", views.registrar_movimiento, name="mercaderia"),
     path("movimientos/", views.listar_movimientos, name="movimientos"),
+    path("productos/<int:pk>/", views.detalle_producto, name="producto_detalle"),
 ]
