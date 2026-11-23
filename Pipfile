@@ -9,6 +9,8 @@ python-dotenv = "*"
 django-crispy-forms = "*"
 crispy-bootstrap5 = "*"
 pillow = "*"
+openpyxl = "*"
+reportlab = "*"
 
 [dev-packages]
 

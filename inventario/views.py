@@ -12,6 +12,19 @@ from django.db import transaction
 from django.views.decorators.http import require_POST
 from .forms import ProductoEditarForm
 from .forms import MovimientoForm
+#exevel
+from io import BytesIO
+from xml.sax.saxutils import escape
+
+from django.http import HttpResponse
+from django.utils import timezone
+from openpyxl import Workbook
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+
 # Create your views here.
 
 @login_required
@@ -306,3 +319,124 @@ def reportes(request):
         "total_alertas": total_alertas,
         "alertas": alertas,
     })
+    
+    
+
+@login_required
+def exportar_excel(request):
+    verificar_admin(request)
+
+    productos = Producto.objects.filter(
+        activo=True
+    ).select_related("categoria").order_by("nombre")
+
+    fecha = timezone.localtime()
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "Inventario"
+
+    hoja.append(["Inventario Mundo Cartas"])
+    hoja.append(["Generado:", fecha.strftime("%d/%m/%Y %H:%M")])
+    hoja.append([])
+
+    hoja.append([
+        "ID", "Producto", "Variante", "SKU",
+        "Categoría", "Unidad", "Precio",
+        "Stock actual", "Stock mínimo"
+    ])
+
+    for producto in productos:
+        hoja.append([
+            producto.id,
+            producto.nombre,
+            producto.variante,
+            producto.sku,
+            producto.categoria.nombre,
+            producto.unidad_venta,
+            producto.precio,
+            producto.stock_actual,
+            producto.stock_minimo,
+        ])
+
+    archivo = BytesIO()
+    libro.save(archivo)
+
+    respuesta = HttpResponse(
+        archivo.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    respuesta["Content-Disposition"] = (
+        'attachment; filename="inventario_mundo_cartas.xlsx"'
+    )
+
+    return respuesta
+
+
+
+@login_required
+def exportar_pdf(request):
+    verificar_admin(request)
+
+    productos = Producto.objects.filter(
+        activo=True
+    ).select_related("categoria").order_by("nombre")
+
+    fecha = timezone.localtime()
+
+    respuesta = HttpResponse(content_type="application/pdf")
+    respuesta["Content-Disposition"] = (
+        'attachment; filename="inventario_mundo_cartas.pdf"'
+    )
+
+    documento = SimpleDocTemplate(
+        respuesta,
+        pagesize=landscape(A4),
+        leftMargin=30,
+        rightMargin=30,
+    )
+
+    estilos = getSampleStyleSheet()
+
+    contenido = [
+        Paragraph("Inventario Mundo Cartas", estilos["Title"]),
+        Paragraph(
+            f"Generado: {fecha.strftime('%d/%m/%Y %H:%M')}",
+            estilos["Normal"]
+        ),
+        Spacer(1, 20),
+    ]
+
+    datos = [[
+        "Producto", "Variante", "SKU", "Categoría",
+        "Unidad", "Precio", "Stock", "Mínimo"
+    ]]
+
+    for producto in productos:
+        datos.append([
+            Paragraph(escape(producto.nombre), estilos["Normal"]),
+            Paragraph(escape(producto.variante), estilos["Normal"]),
+            Paragraph(escape(producto.sku), estilos["Normal"]),
+            Paragraph(escape(producto.categoria.nombre), estilos["Normal"]),
+            producto.unidad_venta,
+            f"${producto.precio}",
+            str(producto.stock_actual),
+            str(producto.stock_minimo),
+        ])
+
+    tabla = Table(
+        datos,
+        colWidths=[165, 85, 100, 110, 65, 80, 50, 50],
+        repeatRows=1
+    )
+
+    tabla.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+
+    contenido.append(tabla)
+    documento.build(contenido)
+
+    return respuesta

@@ -16,4 +16,6 @@ urlpatterns = [
     path("movimientos/", views.listar_movimientos, name="movimientos"),
     path("productos/<int:pk>/", views.detalle_producto, name="producto_detalle"),
     path("reportes/", views.reportes, name="reportes"),
+    path("reportes/excel/", views.exportar_excel, name="exportar_excel"),
+    path("reportes/pdf/", views.exportar_pdf, name="exportar_pdf"),
 ]
