@@ -43,6 +43,12 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'ventas:nueva' %}">
+                        Nueva venta
+                    </a>
+                </li>
+
                 {% if user.perfil.rol.nombre == "Administrador" %}
 
                 <li class="nav-item">
