@@ -3,7 +3,10 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
-
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
+from .models import Perfil
 
 # Create your views here.
 
@@ -29,3 +32,26 @@ def iniciar_sesion(request):
 def cerrar_sesion(request):
     logout(request)
     return redirect("usuarios:login")
+
+@login_required
+def listar_usuarios(request):
+    es_administrador = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador",
+    ).exists()
+
+    if not es_administrador:
+        raise PermissionDenied
+
+    usuarios = (
+        get_user_model().objects
+        .filter(is_superuser=False)
+        .select_related("perfil__rol")
+        .order_by("username")
+    )
+
+    return render(
+        request,
+        "usuarios/usuario_listar.html",
+        {"usuarios": usuarios},
+    )
