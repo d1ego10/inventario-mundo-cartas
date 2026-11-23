@@ -5,8 +5,8 @@ from django.core.exceptions import PermissionDenied
 from usuarios.models import Perfil
 from .models import Categoria
 from .forms import CategoriaForm
-from django.db.models import Q
-from .models import Producto, MovimientoInventario
+from django.db.models import Q, F
+from .models import Categoria, Producto, MovimientoInventario
 from .forms import ProductoForm
 from django.db import transaction
 from django.views.decorators.http import require_POST
@@ -77,7 +77,7 @@ def editar_categoria(request, pk):
 
 
 @login_required
-def listar_productos(request):
+def detalle_producto(request, pk):
     es_admin = Perfil.objects.filter(
         user=request.user,
         rol__nombre="Administrador"
@@ -87,21 +87,16 @@ def listar_productos(request):
 
     if not es_admin:
         productos = productos.filter(activo=True)
-        
-    buscar = request.GET.get("buscar", "")
 
-    if buscar:
-        productos = productos.filter(
-            Q(nombre__icontains=buscar) |
-            Q(sku__icontains=buscar)
-        )
-        
-    productos = productos.order_by("nombre")
+    producto = get_object_or_404(productos, pk=pk)
 
-    return render(request, "inventario/producto_listar.html", {
-        "productos": productos,
-        "es_admin": es_admin,
-        "buscar": buscar,
+    movimientos = producto.movimientos.select_related(
+        "usuario"
+    ).order_by("-fecha", "-id")
+
+    return render(request, "inventario/producto_detalle.html", {
+        "producto": producto,
+        "movimientos": movimientos,
     })
 
 
@@ -232,4 +227,57 @@ def listar_movimientos(request):
 
     return render(request, "inventario/movimiento_listar.html", {
         "movimientos": movimientos
+    })
+    
+@login_required
+def listar_productos(request):
+    es_admin = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador"
+    ).exists()
+
+    productos = Producto.objects.select_related("categoria")
+
+    if not es_admin:
+        productos = productos.filter(activo=True)
+
+    buscar = request.GET.get("buscar", "").strip()
+    categoria = request.GET.get("categoria", "")
+    estado = request.GET.get("estado", "")
+
+    if buscar:
+        productos = productos.filter(
+            Q(nombre__icontains=buscar) |
+            Q(sku__icontains=buscar)
+        )
+
+    categoria_id = int(categoria) if categoria.isdigit() else None
+
+    if categoria_id:
+        productos = productos.filter(categoria_id=categoria_id)
+
+    if estado == "agotado":
+        productos = productos.filter(
+            activo=True,
+            stock_actual=0
+        )
+    elif estado == "bajo":
+        productos = productos.filter(
+            activo=True,
+            stock_actual__gt=0,
+            stock_actual__lte=F("stock_minimo")
+        )
+    elif estado == "disponible":
+        productos = productos.filter(
+            activo=True,
+            stock_actual__gt=F("stock_minimo")
+        )
+
+    return render(request, "inventario/producto_listar.html", {
+        "productos": productos.order_by("nombre"),
+        "categorias": Categoria.objects.all().order_by("nombre"),
+        "es_admin": es_admin,
+        "buscar": buscar,
+        "categoria_seleccionada": categoria_id,
+        "estado_seleccionado": estado,
     })

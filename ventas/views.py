@@ -1,3 +1,205 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
+from decimal import Decimal
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models import F
+
+from usuarios.models import Perfil
+from inventario.models import Producto, MovimientoInventario
+from .models import Venta, DetalleVenta
 
 # Create your views here.
+def verificar_vendedor(request):
+    permitido = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre__in=["Administrador", "Vendedor"]
+    ).exists()
+
+    if not permitido:
+        raise PermissionDenied
+
+
+@login_required
+def nueva_venta(request):
+    verificar_vendedor(request)
+
+    productos = Producto.objects.filter(
+        activo=True
+    ).order_by("nombre")
+
+    carrito = request.session.get("carrito", {})
+    items = []
+    total = Decimal("0")
+
+    for producto in Producto.objects.filter(
+        pk__in=carrito.keys()
+    ):
+        cantidad = carrito[str(producto.id)]
+        subtotal = producto.precio * cantidad
+
+        items.append({
+            "producto": producto,
+            "cantidad": cantidad,
+            "subtotal": subtotal,
+        })
+
+        total += subtotal
+
+    return render(request, "ventas/nueva_venta.html", {
+        "productos": productos,
+        "items": items,
+        "total": total,
+    })
+
+
+@login_required
+@require_POST
+def agregar_producto(request, pk):
+    verificar_vendedor(request)
+
+    producto = get_object_or_404(
+        Producto, pk=pk, activo=True
+    )
+
+    try:
+        cantidad = int(request.POST.get("cantidad", 1))
+    except ValueError:
+        cantidad = 0
+
+    carrito = request.session.get("carrito", {})
+    clave = str(pk)
+    nueva_cantidad = carrito.get(clave, 0) + cantidad
+
+    if cantidad <= 0:
+        messages.error(request, "Cantidad inválida.")
+    elif nueva_cantidad > producto.stock_actual:
+        messages.error(request, "No hay stock suficiente.")
+    else:
+        carrito[clave] = nueva_cantidad
+        request.session["carrito"] = carrito
+
+    return redirect("ventas:nueva")
+
+
+@login_required
+@require_POST
+def actualizar_carrito(request, pk):
+    verificar_vendedor(request)
+
+    producto = get_object_or_404(
+        Producto, pk=pk, activo=True
+    )
+
+    try:
+        cantidad = int(request.POST.get("cantidad", 1))
+    except ValueError:
+        cantidad = 0
+
+    if cantidad <= 0 or cantidad > producto.stock_actual:
+        messages.error(request, "Cantidad no disponible.")
+    else:
+        carrito = request.session.get("carrito", {})
+        carrito[str(pk)] = cantidad
+        request.session["carrito"] = carrito
+
+    return redirect("ventas:nueva")
+
+
+@login_required
+@require_POST
+def quitar_producto(request, pk):
+    verificar_vendedor(request)
+
+    carrito = request.session.get("carrito", {})
+    carrito.pop(str(pk), None)
+    request.session["carrito"] = carrito
+
+    return redirect("ventas:nueva")
+
+
+@login_required
+@require_POST
+def confirmar_venta(request):
+    verificar_vendedor(request)
+
+    carrito = request.session.get("carrito", {})
+
+    if not carrito:
+        messages.error(request, "El carrito está vacío.")
+        return redirect("ventas:nueva")
+
+    try:
+        with transaction.atomic():
+            venta = Venta.objects.create(vendedor=request.user)
+            total = Decimal("0")
+
+            for producto_id, cantidad in carrito.items():
+                if not isinstance(cantidad, int) or cantidad <= 0:
+                    raise ValueError("Cantidad inválida.")
+
+                producto = Producto.objects.get(
+                    pk=producto_id,
+                    activo=True
+                )
+
+                actualizado = Producto.objects.filter(
+                    pk=producto.pk,
+                    activo=True,
+                    stock_actual__gte=cantidad
+                ).update(
+                    stock_actual=F("stock_actual") - cantidad
+                )
+
+                if not actualizado:
+                    raise ValueError(
+                        f"Stock insuficiente para {producto.nombre}."
+                    )
+
+                producto.refresh_from_db()
+
+                subtotal = producto.precio * cantidad
+
+                DetalleVenta.objects.create(
+                    venta=venta,
+                    producto=producto,
+                    cantidad=cantidad,
+                    precio_unitario=producto.precio,
+                    subtotal=subtotal,
+                )
+
+                MovimientoInventario.objects.create(
+                    producto=producto,
+                    tipo="SALIDA",
+                    cantidad=cantidad,
+                    motivo=f"Venta #{venta.id}",
+                    stock_resultante=producto.stock_actual,
+                    usuario=request.user,
+                )
+
+                total += subtotal
+
+            venta.total = total
+            venta.save()
+
+    except Producto.DoesNotExist:
+        messages.error(
+            request,
+            "Uno de los productos ya no está disponible."
+        )
+        return redirect("ventas:nueva")
+
+    except ValueError as error:
+        messages.error(request, str(error))
+        return redirect("ventas:nueva")
+
+    request.session.pop("carrito", None)
+
+    messages.success(
+        request,
+        f"Venta #{venta.id} registrada correctamente."
+    )
+
+    return redirect("ventas:nueva")

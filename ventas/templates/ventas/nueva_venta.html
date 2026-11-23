@@ -1,0 +1,148 @@
+{% extends "inventario/base.html" %}
+
+{% block title %}Nueva venta{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-3">Nueva venta</h2>
+
+{% for message in messages %}
+<div class="alert alert-info">
+    {{ message }}
+</div>
+{% endfor %}
+
+<div class="row">
+
+    <!-- Catálogo -->
+    <div class="col-lg-8">
+        <h4>Productos disponibles</h4>
+
+        <div class="row">
+            {% for producto in productos %}
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+
+                        <h5>{{ producto.nombre }}</h5>
+
+                        <p class="mb-1">
+                            {{ producto.variante }}
+                        </p>
+
+                        <p class="mb-1">
+                            SKU: {{ producto.sku }}
+                        </p>
+
+                        <p class="mb-1">
+                            Precio: ${{ producto.precio }}
+                        </p>
+
+                        <p>
+                            Stock: {{ producto.stock_actual }}
+                        </p>
+
+                        {% if producto.stock_actual > 0 %}
+                        <form method="post"
+                              action="{% url 'ventas:agregar' producto.id %}">
+                            {% csrf_token %}
+
+                            <div class="d-flex gap-2">
+                                <input type="number"
+                                       name="cantidad"
+                                       value="1"
+                                       min="1"
+                                       max="{{ producto.stock_actual }}"
+                                       class="form-control"
+                                       style="width: 80px;">
+
+                                <button class="btn btn-primary">
+                                    Agregar
+                                </button>
+                            </div>
+                        </form>
+                        {% else %}
+                            <span class="badge bg-danger">
+                                Agotado
+                            </span>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+                <p>No hay productos registrados.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Carrito -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body">
+
+                <h4>Carrito</h4>
+
+                {% for item in items %}
+                <div class="border-bottom py-2">
+
+                    <strong>{{ item.producto.nombre }}</strong>
+
+                    <p class="mb-1">
+                        ${{ item.producto.precio }} c/u
+                    </p>
+
+                    <form method="post"
+                          action="{% url 'ventas:actualizar' item.producto.id %}"
+                          class="d-flex gap-2 mb-2">
+                        {% csrf_token %}
+
+                        <input type="number"
+                               name="cantidad"
+                               value="{{ item.cantidad }}"
+                               min="1"
+                               class="form-control"
+                               style="width: 80px;">
+
+                        <button class="btn btn-sm btn-secondary">
+                            Actualizar
+                        </button>
+                    </form>
+
+                    <p>Subtotal: ${{ item.subtotal }}</p>
+
+                    <form method="post"
+                          action="{% url 'ventas:quitar' item.producto.id %}">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-outline-danger">
+                            Quitar
+                        </button>
+                    </form>
+
+                </div>
+                {% empty %}
+                    <p class="text-muted">
+                        Todavía no hay productos en el carrito.
+                    </p>
+                {% endfor %}
+
+                <h4 class="mt-3">Total: ${{ total }}</h4>
+
+                {% if items %}
+                <form method="post"
+                      action="{% url 'ventas:confirmar' %}">
+                    {% csrf_token %}
+
+                    <button class="btn btn-success w-100">
+                        Confirmar venta
+                    </button>
+                </form>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
