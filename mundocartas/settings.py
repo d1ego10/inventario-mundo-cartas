@@ -139,3 +139,4 @@ MAILERS = {
 }
 
 LOGIN_URL = "usuarios:login"
+LOGIN_REDIRECT_URL = "inventario:inicio"
