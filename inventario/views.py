@@ -5,7 +5,7 @@ from django.core.exceptions import PermissionDenied
 from usuarios.models import Perfil
 from .models import Categoria
 from .forms import CategoriaForm
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum
 from .models import Categoria, Producto, MovimientoInventario
 from .forms import ProductoForm
 from django.db import transaction
@@ -280,4 +280,29 @@ def listar_productos(request):
         "buscar": buscar,
         "categoria_seleccionada": categoria_id,
         "estado_seleccionado": estado,
+    })
+    
+@login_required
+def reportes(request):
+    verificar_admin(request)
+
+    productos = Producto.objects.filter(activo=True)
+
+    total_productos = productos.count()
+
+    total_unidades = productos.aggregate(
+        total=Sum("stock_actual")
+    )["total"] or 0
+
+    alertas = productos.filter(
+        stock_actual__lte=F("stock_minimo")
+    ).order_by("stock_actual", "nombre")
+
+    total_alertas = alertas.count()
+
+    return render(request, "inventario/reportes.html", {
+        "total_productos": total_productos,
+        "total_unidades": total_unidades,
+        "total_alertas": total_alertas,
+        "alertas": alertas,
     })
