@@ -1,0 +1,104 @@
+{% extends "inventario/base.html" %}
+
+{% block title %}Detalle de venta{% endblock %}
+
+{% block content %}
+{% for message in messages %}
+<div class="alert alert-info">
+    {{ message }}
+</div>
+{% endfor %}
+
+<h2>Venta #{{ venta.id }}</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <p><strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}</p>
+        <p><strong>Vendedor:</strong> {{ venta.vendedor.username }}</p>
+        <p><strong>Total:</strong> ${{ venta.total }}</p>
+
+        <p>
+            <strong>Estado:</strong>
+            {% if venta.anulada %}
+                Anulada
+            {% else %}
+                Registrada
+            {% endif %}
+        </p>
+
+        {% if venta.anulada %}
+            <p>
+                <strong>Motivo de anulación:</strong>
+                {{ venta.motivo_anulacion }}
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<h4>Productos vendidos</h4>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>SKU</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for detalle in detalles %}
+        <tr>
+            <td>{{ detalle.producto.nombre }}</td>
+            <td>{{ detalle.producto.sku }}</td>
+            <td>{{ detalle.cantidad }}</td>
+            <td>${{ detalle.precio_unitario }}</td>
+            <td>${{ detalle.subtotal }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">No hay productos en esta venta.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'ventas:historial' %}"
+   class="btn btn-secondary">
+    Volver al historial
+</a>
+{% if es_admin and not venta.anulada %}
+<div class="card mt-4">
+    <div class="card-body">
+        <h5>Anular venta</h5>
+
+        <p class="text-muted">
+            La anulación devolverá los productos al inventario.
+        </p>
+
+        <form method="post"
+              action="{% url 'ventas:anular' venta.id %}">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">Motivo de anulación</label>
+
+                <textarea name="motivo"
+                          class="form-control"
+                          rows="2"
+                          required></textarea>
+            </div>
+
+            <button type="submit"
+                    class="btn btn-danger"
+                    onclick="return confirm('¿Seguro que deseas anular esta venta?')">
+                Anular venta
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

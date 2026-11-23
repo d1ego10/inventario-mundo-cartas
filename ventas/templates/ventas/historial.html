@@ -1,0 +1,50 @@
+{% extends "inventario/base.html" %}
+
+{% block title %}Historial de ventas{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-3">Historial de ventas</h2>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>N° Venta</th>
+            <th>Fecha</th>
+            <th>Vendedor</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for venta in ventas %}
+        <tr>
+            <td>{{ venta.id }}</td>
+            <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
+            <td>{{ venta.vendedor.username }}</td>
+            <td>${{ venta.total }}</td>
+            <td>
+                {% if venta.anulada %}
+                    <span class="badge bg-danger">Anulada</span>
+                {% else %}
+                    <span class="badge bg-success">Registrada</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'ventas:detalle' venta.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    Ver detalle
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">No hay ventas registradas.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
