@@ -203,3 +203,47 @@ def confirmar_venta(request):
     )
 
     return redirect("ventas:nueva")
+
+@login_required
+def historial_ventas(request):
+    verificar_vendedor(request)
+
+    es_admin = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador"
+    ).exists()
+
+    ventas = Venta.objects.select_related("vendedor")
+
+    if not es_admin:
+        ventas = ventas.filter(vendedor=request.user)
+
+    ventas = ventas.order_by("-fecha", "-id")
+
+    return render(request, "ventas/historial.html", {
+        "ventas": ventas,
+    })
+
+
+@login_required
+def detalle_venta(request, pk):
+    verificar_vendedor(request)
+
+    es_admin = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador"
+    ).exists()
+
+    ventas = Venta.objects.select_related("vendedor")
+
+    if not es_admin:
+        ventas = ventas.filter(vendedor=request.user)
+
+    venta = get_object_or_404(ventas, pk=pk)
+
+    detalles = venta.detalles.select_related("producto")
+
+    return render(request, "ventas/detalle.html", {
+        "venta": venta,
+        "detalles": detalles,
+    })

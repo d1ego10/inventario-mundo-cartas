@@ -1,0 +1,68 @@
+{% extends "inventario/base.html" %}
+
+{% block title %}Detalle de venta{% endblock %}
+
+{% block content %}
+
+<h2>Venta #{{ venta.id }}</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <p><strong>Fecha:</strong> {{ venta.fecha|date:"d/m/Y H:i" }}</p>
+        <p><strong>Vendedor:</strong> {{ venta.vendedor.username }}</p>
+        <p><strong>Total:</strong> ${{ venta.total }}</p>
+
+        <p>
+            <strong>Estado:</strong>
+            {% if venta.anulada %}
+                Anulada
+            {% else %}
+                Registrada
+            {% endif %}
+        </p>
+
+        {% if venta.anulada %}
+            <p>
+                <strong>Motivo de anulación:</strong>
+                {{ venta.motivo_anulacion }}
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<h4>Productos vendidos</h4>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>SKU</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for detalle in detalles %}
+        <tr>
+            <td>{{ detalle.producto.nombre }}</td>
+            <td>{{ detalle.producto.sku }}</td>
+            <td>{{ detalle.cantidad }}</td>
+            <td>${{ detalle.precio_unitario }}</td>
+            <td>${{ detalle.subtotal }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">No hay productos en esta venta.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'ventas:historial' %}"
+   class="btn btn-secondary">
+    Volver al historial
+</a>
+
+{% endblock %}
