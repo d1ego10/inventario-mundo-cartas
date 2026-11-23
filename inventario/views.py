@@ -11,6 +11,7 @@ from .forms import ProductoForm
 from django.db import transaction
 from django.views.decorators.http import require_POST
 from .forms import ProductoEditarForm
+from .forms import MovimientoForm
 # Create your views here.
 
 @login_required
@@ -170,3 +171,65 @@ def desactivar_producto(request, pk):
     producto.save()
 
     return redirect("inventario:productos")
+
+
+@login_required
+def registrar_movimiento(request):
+    verificar_admin(request)
+
+    form = MovimientoForm(
+        request.POST if request.method == "POST" else None
+    )
+
+    if request.method == "POST" and form.is_valid():
+
+        with transaction.atomic():
+            producto = Producto.objects.select_for_update().get(
+                pk=form.cleaned_data["producto"].pk,
+                activo=True
+            )
+
+            tipo = form.cleaned_data["tipo"]
+            cantidad = form.cleaned_data["cantidad"]
+            motivo = form.cleaned_data["motivo"]
+
+            if tipo == "SALIDA" and cantidad > producto.stock_actual:
+                form.add_error(
+                    "cantidad",
+                    "No hay stock suficiente para esta salida."
+                )
+            else:
+                if tipo == "ENTRADA":
+                    producto.stock_actual += cantidad
+                else:
+                    producto.stock_actual -= cantidad
+
+                producto.save(update_fields=["stock_actual"])
+
+                MovimientoInventario.objects.create(
+                    producto=producto,
+                    tipo=tipo,
+                    cantidad=cantidad,
+                    motivo=motivo,
+                    stock_resultante=producto.stock_actual,
+                    usuario=request.user
+                )
+
+                return redirect("inventario:movimientos")
+
+    return render(request, "inventario/movimiento_form.html", {
+        "form": form
+    })
+
+
+@login_required
+def listar_movimientos(request):
+    verificar_admin(request)
+
+    movimientos = MovimientoInventario.objects.select_related(
+        "producto", "usuario"
+    ).order_by("-fecha", "-id")
+
+    return render(request, "inventario/movimiento_listar.html", {
+        "movimientos": movimientos
+    })

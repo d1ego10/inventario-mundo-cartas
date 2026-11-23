@@ -1,7 +1,7 @@
 from django import forms
 from .models import Categoria
 from .models import Producto
-
+from .models import MovimientoInventario, Producto
 
 class CategoriaForm(forms.ModelForm):
     class Meta:
@@ -55,3 +55,35 @@ class ProductoEditarForm(forms.ModelForm):
             "stock_minimo",
             "imagen",
         ]
+
+class MovimientoForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoInventario
+        fields = ["producto", "tipo", "cantidad", "motivo"]
+
+        labels = {
+            "producto": "Producto",
+            "tipo": "Movimiento",
+            "cantidad": "Cantidad de unidades",
+            "motivo": "Motivo / referencia",
+        }
+
+        widgets = {
+            "producto": forms.Select(attrs={"class": "form-select"}),
+            "tipo": forms.Select(attrs={"class": "form-select"}),
+            "cantidad": forms.NumberInput(attrs={"class": "form-control"}),
+            "motivo": forms.TextInput(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["producto"].queryset = Producto.objects.filter(
+            activo=True
+        ).order_by("nombre")
+
+        self.fields["producto"].label_from_instance = (
+            lambda producto: f"{producto.nombre} - {producto.sku} "
+                             f"(Stock: {producto.stock_actual})"
+        )
+

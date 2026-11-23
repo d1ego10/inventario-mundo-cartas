@@ -1,0 +1,38 @@
+{% extends "inventario/base.html" %}
+
+{% block title %}Registrar mercadería{% endblock %}
+
+{% block content %}
+<div class="col-md-7 mx-auto">
+
+    <h2>Registrar mercadería</h2>
+    <p class="text-muted">
+        Registra entradas o salidas de productos existentes.
+    </p>
+
+    <div class="card">
+        <div class="card-body">
+
+            <form method="post">
+                {% csrf_token %}
+
+                {{ form.as_p }}
+
+                <p class="text-muted">
+                    Responsable: {{ user.username }}
+                </p>
+
+                <button type="submit" class="btn btn-primary">
+                    Guardar movimiento
+                </button>
+
+                <a href="{% url 'inventario:movimientos' %}"
+                   class="btn btn-secondary">
+                    Ver historial
+                </a>
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
