@@ -3,6 +3,11 @@
 {% block title %}Detalle de venta{% endblock %}
 
 {% block content %}
+{% for message in messages %}
+<div class="alert alert-info">
+    {{ message }}
+</div>
+{% endfor %}
 
 <h2>Venta #{{ venta.id }}</h2>
 
@@ -64,5 +69,36 @@
    class="btn btn-secondary">
     Volver al historial
 </a>
+{% if es_admin and not venta.anulada %}
+<div class="card mt-4">
+    <div class="card-body">
+        <h5>Anular venta</h5>
+
+        <p class="text-muted">
+            La anulación devolverá los productos al inventario.
+        </p>
+
+        <form method="post"
+              action="{% url 'ventas:anular' venta.id %}">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label">Motivo de anulación</label>
+
+                <textarea name="motivo"
+                          class="form-control"
+                          rows="2"
+                          required></textarea>
+            </div>
+
+            <button type="submit"
+                    class="btn btn-danger"
+                    onclick="return confirm('¿Seguro que deseas anular esta venta?')">
+                Anular venta
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 {% endblock %}

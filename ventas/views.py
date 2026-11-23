@@ -246,4 +246,57 @@ def detalle_venta(request, pk):
     return render(request, "ventas/detalle.html", {
         "venta": venta,
         "detalles": detalles,
+        "es_admin": es_admin,
     })
+
+@login_required
+@require_POST
+def anular_venta(request, pk):
+    es_admin = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador"
+    ).exists()
+
+    if not es_admin:
+        raise PermissionDenied
+
+    motivo = request.POST.get("motivo", "").strip()
+
+    if not motivo:
+        messages.error(request, "Debes indicar el motivo de anulación.")
+        return redirect("ventas:detalle", pk=pk)
+
+    with transaction.atomic():
+        venta = get_object_or_404(
+            Venta.objects.select_for_update(),
+            pk=pk
+        )
+
+        if venta.anulada:
+            messages.error(request, "Esta venta ya fue anulada.")
+            return redirect("ventas:detalle", pk=pk)
+
+        for detalle in venta.detalles.select_related("producto"):
+            producto = detalle.producto
+
+            Producto.objects.filter(pk=producto.pk).update(
+                stock_actual=F("stock_actual") + detalle.cantidad
+            )
+
+            producto.refresh_from_db()
+
+            MovimientoInventario.objects.create(
+                producto=producto,
+                tipo="ENTRADA",
+                cantidad=detalle.cantidad,
+                motivo=f"Anulación venta #{venta.id}: {motivo}",
+                stock_resultante=producto.stock_actual,
+                usuario=request.user,
+            )
+
+        venta.anulada = True
+        venta.motivo_anulacion = motivo
+        venta.save(update_fields=["anulada", "motivo_anulacion"])
+
+    messages.success(request, "Venta anulada correctamente.")
+    return redirect("ventas:detalle", pk=pk)
