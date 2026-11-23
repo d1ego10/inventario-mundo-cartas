@@ -7,6 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from .models import Perfil
+from django.db import transaction
+from .forms import CrearUsuarioForm
 
 # Create your views here.
 
@@ -54,4 +56,35 @@ def listar_usuarios(request):
         request,
         "usuarios/usuario_listar.html",
         {"usuarios": usuarios},
+    )
+    
+@login_required
+def crear_usuario(request):
+    es_administrador = Perfil.objects.filter(
+        user=request.user,
+        rol__nombre="Administrador",
+    ).exists()
+
+    if not es_administrador:
+        raise PermissionDenied
+
+    form = CrearUsuarioForm(
+        request.POST if request.method == "POST" else None
+    )
+
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            usuario = form.save()
+
+            Perfil.objects.create(
+                user=usuario,
+                rol=form.cleaned_data["rol"],
+            )
+
+        return redirect("usuarios:listar")
+
+    return render(
+        request,
+        "usuarios/usuario_form.html",
+        {"form": form},
     )
