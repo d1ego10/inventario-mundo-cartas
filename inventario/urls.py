@@ -15,4 +15,5 @@ urlpatterns = [
     path("mercaderia/", views.registrar_movimiento, name="mercaderia"),
     path("movimientos/", views.listar_movimientos, name="movimientos"),
     path("productos/<int:pk>/", views.detalle_producto, name="producto_detalle"),
+    path("reportes/", views.reportes, name="reportes"),
 ]
