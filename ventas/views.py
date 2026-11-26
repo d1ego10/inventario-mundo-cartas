@@ -275,7 +275,14 @@ def anular_venta(request, pk):
         if venta.anulada:
             messages.error(request, "Esta venta ya fue anulada.")
             return redirect("ventas:detalle", pk=pk)
-
+##
+        if venta.detalles.filter(producto__activo=False).exists():
+            messages.error(
+                request,
+                "No se puede anular la venta porque contiene productos desactivados."
+            )
+            return redirect("ventas:detalle", pk=pk)
+##
         for detalle in venta.detalles.select_related("producto"):
             producto = detalle.producto
 
